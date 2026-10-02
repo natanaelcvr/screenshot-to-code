@@ -6,6 +6,21 @@ from routes.generate_code import ParameterExtractionStage
 
 
 @pytest.mark.asyncio
+async def test_accepts_flutter_as_a_valid_generated_code_config() -> None:
+    stage = ParameterExtractionStage(AsyncMock())
+
+    extracted = await stage.extract_and_validate(
+        {
+            "generatedCodeConfig": "flutter",
+            "inputMode": "text",
+            "prompt": {"text": "hello"},
+        }
+    )
+
+    assert extracted.stack == "flutter"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("request_value", "expected"),
     [(None, True), (False, False), (True, True)],

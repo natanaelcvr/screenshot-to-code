@@ -3,6 +3,7 @@ import { IconType } from "react-icons";
 import {
   SiBootstrap,
   SiCss3,
+  SiFlutter,
   SiHtml5,
   SiIonic,
   SiReact,
@@ -19,6 +20,7 @@ const COMPONENT_LOGOS: { [name: string]: { icon: IconType; color: string } } = {
   Bootstrap: { icon: SiBootstrap, color: "#7952B3" },
   Vue: { icon: SiVuedotjs, color: "#4FC08D" },
   Ionic: { icon: SiIonic, color: "#3880FF" },
+  Flutter: { icon: SiFlutter, color: "#02569B" },
 };
 
 interface StackLabelProps {

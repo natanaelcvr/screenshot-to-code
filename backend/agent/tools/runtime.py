@@ -20,6 +20,7 @@ from uploaded_assets.tools import run_save_assets
 from agent.state import AgentFileState, ensure_str
 from agent.tools.types import ToolCall, ToolExecutionResult, ToolMultimodalPart
 from agent.tools.summaries import summarize_text
+from prompts.prompt_types import Stack
 
 
 IMAGE_TOOL_BATCH_SIZE = 20
@@ -38,6 +39,7 @@ class AgentToolRuntime:
         asset_base_url: str = "",
         user_id: Optional[str] = None,
         option_codes: Optional[List[str]] = None,
+        stack: Stack = "html_tailwind",
     ):
         self.file_state = file_state
         self.should_generate_images = should_generate_images
@@ -49,6 +51,7 @@ class AgentToolRuntime:
         self.asset_base_url = asset_base_url
         self.user_id = user_id
         self.option_codes = option_codes or []
+        self.stack: Stack = stack
 
     def _effective_replicate_api_key(self) -> str | None:
         return self.replicate_api_key or REPLICATE_API_KEY

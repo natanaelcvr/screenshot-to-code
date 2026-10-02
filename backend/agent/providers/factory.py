@@ -14,6 +14,7 @@ from config import REPLICATE_API_KEY
 from fs_logging.agent_runs import AgentRunRecorder
 from llm import ANTHROPIC_MODELS, GEMINI_MODELS, OPENAI_MODELS, Llm
 from preview_screenshot import is_screenshot_preview_available
+from prompts.prompt_types import Stack
 
 
 def create_provider_session(
@@ -27,6 +28,7 @@ def create_provider_session(
     replicate_api_key: Optional[str],
     should_extract_assets: bool = True,
     recorder: Optional[AgentRunRecorder] = None,
+    stack: Stack = "html_tailwind",
 ) -> ProviderSession:
     canonical_tools = canonical_tool_definitions(
         image_generation_enabled=should_generate_images,
@@ -34,8 +36,11 @@ def create_provider_session(
         image_editing_enabled=bool(replicate_api_key or REPLICATE_API_KEY),
         # The extract_assets tool calls Gemini, so don't offer it without a key.
         asset_extraction_enabled=should_extract_assets and bool(gemini_api_key),
-        # screenshot_preview needs headless Chromium; skip it if it can't launch.
-        screenshot_enabled=is_screenshot_preview_available(),
+        # screenshot_preview renders HTML in headless Chromium, so it neither
+        # applies nor works for Flutter/Dart; skip it for that stack
+        # regardless of Chromium availability, and otherwise skip it only if
+        # Chromium can't launch here.
+        screenshot_enabled=stack != "flutter" and is_screenshot_preview_available(),
     )
 
     if model in OPENAI_MODELS:

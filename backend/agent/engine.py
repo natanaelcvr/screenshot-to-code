@@ -20,6 +20,7 @@ from agent.tools import (
 )
 from config import GENERATION_MAX_COST_USD
 from fs_logging.agent_runs import AgentRunRecorder
+from prompts.prompt_types import Stack
 
 
 class EmptyOutputError(Exception):
@@ -67,10 +68,12 @@ class AgentEngine:
         initial_file_state: Optional[Dict[str, str]] = None,
         option_codes: Optional[List[str]] = None,
         recorder: Optional[AgentRunRecorder] = None,
+        stack: Stack = "html_tailwind",
     ):
         self.send_message = send_message
         self.variant_index = variant_index
         self.recorder = recorder
+        self.stack: Stack = stack
         self.openai_api_key = openai_api_key
         self.openai_base_url = openai_base_url
         self.anthropic_api_key = anthropic_api_key
@@ -93,6 +96,7 @@ class AgentEngine:
             replicate_api_key=replicate_api_key,
             asset_base_url=asset_base_url,
             option_codes=option_codes,
+            stack=stack,
         )
         self._tool_preview_lengths: Dict[str, int] = {}
 
@@ -350,6 +354,7 @@ class AgentEngine:
                 self.should_extract_assets and bool(self.tool_runtime.input_images)
             ),
             recorder=self.recorder,
+            stack=self.stack,
         )
         try:
             result = await self._run_with_session(session)

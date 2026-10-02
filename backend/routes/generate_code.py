@@ -654,6 +654,7 @@ class AgenticGenerationStage:
                 initial_file_state=self.file_state,
                 option_codes=self.option_codes,
                 recorder=recorder,
+                stack=cast(Stack, self.stack) if self.stack else "html_tailwind",
             )
             completion = await runner.run(model, prompt_messages)
             if completion:

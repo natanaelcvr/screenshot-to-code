@@ -186,6 +186,32 @@ def test_provider_session_excludes_screenshot_preview_when_chromium_unavailable(
     assert "screenshot_preview" not in tool_names
 
 
+def test_provider_session_excludes_screenshot_preview_for_flutter_stack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # screenshot_preview renders HTML in Chromium; Flutter/Dart isn't
+    # renderable by it, so it must never be offered for that stack even
+    # when Chromium itself is available.
+    monkeypatch.setattr(
+        "agent.providers.factory.is_screenshot_preview_available", lambda: True
+    )
+    session = create_provider_session(
+        model=Llm.GPT_5_5_HIGH,
+        prompt_messages=[{"role": "user", "content": "Build a page."}],
+        should_generate_images=True,
+        openai_api_key="openai-key",
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+        stack="flutter",
+    )
+
+    tools = cast(list[dict[str, Any]], getattr(session, "_tools"))
+    tool_names = [tool["name"] for tool in tools]
+    assert "screenshot_preview" not in tool_names
+
+
 def test_provider_session_includes_screenshot_preview_when_chromium_available(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

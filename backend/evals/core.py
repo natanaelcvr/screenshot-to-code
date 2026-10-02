@@ -75,6 +75,7 @@ async def _run_eval_agent(
         initial_file_state=None,
         option_codes=None,
         recorder=recorder,
+        stack=stack,
     )
     return await runner.run(model, prompt_messages)
 

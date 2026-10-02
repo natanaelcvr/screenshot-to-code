@@ -1,4 +1,26 @@
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from prompts.prompt_types import Stack
+
+# Stacks whose generated content is not HTML, so the <html>/<file> extraction
+# below doesn't apply and its "no <html> tags found" warning is just noise.
+NON_HTML_STACKS = frozenset({"flutter"})
+
+
+def extract_code_content(text: str, stack: "Stack") -> str:
+    """Extract the primary generated code from a model response.
+
+    Dispatches to `extract_html_content` for HTML-based stacks (the six
+    existing stacks, all single-file HTML), and returns the text unchanged
+    for non-HTML stacks (e.g. Flutter/Dart) — their content has no <html>
+    tags to find, and running that extraction would only print a confusing
+    "No <html> tags found" warning on every create_file/edit_file call.
+    """
+    if stack in NON_HTML_STACKS:
+        return text
+    return extract_html_content(text)
 
 
 def extract_html_content(text: str) -> str:

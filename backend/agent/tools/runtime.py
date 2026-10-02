@@ -3,7 +3,7 @@ import asyncio
 import difflib
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-from codegen.utils import extract_html_content
+from codegen.utils import extract_code_content
 from config import REPLICATE_API_KEY
 from agent.tools.extract_assets import run_extract_assets
 from agent.tools.local_assets import guess_image_mime, local_asset_url_to_data_url
@@ -102,7 +102,26 @@ class AgentToolRuntime:
         )
 
     def _create_file(self, args: Dict[str, Any]) -> ToolExecutionResult:
-        path = ensure_str(args.get("path") or self.file_state.path or "index.html")
+        raw_path = ensure_str(args.get("path")).strip()
+        if self.stack == "flutter":
+            # Flutter is a real multi-file project (pubspec.yaml + lib/**):
+            # there's no single default file to silently fall back to, so a
+            # path is always required.
+            if not raw_path:
+                return ToolExecutionResult(
+                    ok=False,
+                    result={
+                        "error": (
+                            "create_file requires an explicit path for Flutter "
+                            "projects (e.g. lib/main.dart)."
+                        )
+                    },
+                    summary={"error": "Missing path"},
+                )
+            path = raw_path
+        else:
+            path = raw_path or self.file_state.path or "index.html"
+
         content = ensure_str(args.get("content"))
         if not content:
             return ToolExecutionResult(
@@ -111,9 +130,13 @@ class AgentToolRuntime:
                 summary={"error": "Missing content"},
             )
 
-        extracted = extract_html_content(content)
+        extracted = extract_code_content(content, self.stack)
+        final_content = extracted or content
+
+        if self.stack == "flutter":
+            self.file_state.files[path] = final_content
         self.file_state.path = path
-        self.file_state.content = extracted or content
+        self.file_state.content = final_content
 
         summary = {
             "path": self.file_state.path,
@@ -181,12 +204,40 @@ class AgentToolRuntime:
         return updated, min(replace_count, content.count(old_text))
 
     def _edit_file(self, args: Dict[str, Any]) -> ToolExecutionResult:
-        if not self.file_state.content:
-            return ToolExecutionResult(
-                ok=False,
-                result={"error": "No file exists yet. Call create_file first."},
-                summary={"error": "No file to edit"},
-            )
+        if self.stack == "flutter":
+            raw_path = ensure_str(args.get("path")).strip()
+            if not raw_path:
+                return ToolExecutionResult(
+                    ok=False,
+                    result={
+                        "error": (
+                            "edit_file requires an explicit path for Flutter "
+                            "projects (e.g. lib/main.dart)."
+                        )
+                    },
+                    summary={"error": "Missing path"},
+                )
+            if raw_path not in self.file_state.files:
+                return ToolExecutionResult(
+                    ok=False,
+                    result={
+                        "error": (
+                            f"No file exists at {raw_path} yet. Call create_file first."
+                        )
+                    },
+                    summary={"error": "No file to edit"},
+                )
+            path = raw_path
+            content = self.file_state.files[path]
+        else:
+            if not self.file_state.content:
+                return ToolExecutionResult(
+                    ok=False,
+                    result={"error": "No file exists yet. Call create_file first."},
+                    summary={"error": "No file to edit"},
+                )
+            path = self.file_state.path or "index.html"
+            content = self.file_state.content
 
         edits = args.get("edits")
         if not edits:
@@ -202,7 +253,6 @@ class AgentToolRuntime:
                 summary={"error": "Invalid edits payload"},
             )
 
-        content = self.file_state.content
         original_content = content
         summary_edits: List[Dict[str, Any]] = []
         for edit in edits:
@@ -235,8 +285,10 @@ class AgentToolRuntime:
                 }
             )
 
+        if self.stack == "flutter":
+            self.file_state.files[path] = content
+        self.file_state.path = path
         self.file_state.content = content
-        path = self.file_state.path or "index.html"
         diff_info = self._generate_diff(original_content, content, path)
         summary = {
             "path": path,

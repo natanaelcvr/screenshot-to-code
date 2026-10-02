@@ -356,6 +356,116 @@ async def test_extract_assets_all_missing_returns_error(
     assert not result.multimodal_parts
 
 
+def test_create_file_requires_explicit_path_for_flutter() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+        stack="flutter",
+    )
+
+    result = runtime._create_file({"content": "void main() {}"})
+
+    assert result.ok is False
+    assert "path" in result.summary["error"].lower()
+    # Flutter must never silently fall back to index.html.
+    assert runtime.file_state.files == {}
+
+
+def test_create_file_writes_into_files_dict_for_flutter() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+        stack="flutter",
+    )
+
+    result = runtime._create_file(
+        {"path": "lib/main.dart", "content": "void main() {}"}
+    )
+
+    assert result.ok is True
+    assert runtime.file_state.files == {"lib/main.dart": "void main() {}"}
+    # path/content still mirror the most recently touched file, for the
+    # existing single-file code preview stream.
+    assert runtime.file_state.path == "lib/main.dart"
+    assert runtime.file_state.content == "void main() {}"
+
+
+def test_create_file_still_defaults_to_index_html_for_non_flutter_stacks() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+    )
+
+    result = runtime._create_file({"content": "<div>hi</div>"})
+
+    assert result.ok is True
+    assert runtime.file_state.path == "index.html"
+    assert runtime.file_state.content == "<div>hi</div>"
+    # Non-Flutter stacks never populate the multi-file store.
+    assert runtime.file_state.files == {}
+
+
+def test_edit_file_requires_explicit_path_for_flutter() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(files={"lib/main.dart": "void main() {}"}),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+        stack="flutter",
+    )
+
+    result = runtime._edit_file({"old_text": "void", "new_text": "void"})
+
+    assert result.ok is False
+    assert "path" in result.summary["error"].lower()
+
+
+def test_edit_file_requires_existing_path_for_flutter() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+        stack="flutter",
+    )
+
+    result = runtime._edit_file(
+        {"path": "lib/main.dart", "old_text": "void", "new_text": "void"}
+    )
+
+    assert result.ok is False
+    assert "create_file" in result.result["error"]
+
+
+def test_edit_file_updates_files_dict_for_flutter() -> None:
+    runtime = AgentToolRuntime(
+        file_state=AgentFileState(files={"lib/main.dart": "void main() {}"}),
+        should_generate_images=False,
+        openai_api_key=None,
+        openai_base_url=None,
+        stack="flutter",
+    )
+
+    result = runtime._edit_file(
+        {
+            "path": "lib/main.dart",
+            "old_text": "void main() {}",
+            "new_text": "void main() { print(1); }",
+        }
+    )
+
+    assert result.ok is True
+    assert runtime.file_state.files == {
+        "lib/main.dart": "void main() { print(1); }"
+    }
+
+
 @pytest.mark.asyncio
 async def test_screenshot_preview_requires_file_content() -> None:
     runtime = AgentToolRuntime(

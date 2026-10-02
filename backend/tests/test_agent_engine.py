@@ -109,3 +109,59 @@ async def test_asset_extraction_is_only_offered_for_still_image_inputs(
         is expected_extraction_enabled
     )
     assert session.closed is True
+
+
+def test_engine_seeds_flutter_scaffold_files_and_disables_default_path() -> None:
+    async def send_message(
+        message_type: str,
+        value: str | None,
+        variant_index: int,
+        data: dict[str, Any] | None,
+        event_id: str | None,
+    ) -> None:
+        return None
+
+    engine = AgentEngine(
+        send_message=send_message,
+        variant_index=0,
+        openai_api_key=None,
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+        should_generate_images=False,
+        stack="flutter",
+    )
+
+    assert engine.stack == "flutter"
+    assert "pubspec.yaml" in engine.file_state.files
+    assert "web/index.html" in engine.file_state.files
+    # No single default file exists for Flutter, unlike the other stacks.
+    assert engine.file_state.path == ""
+    assert engine.tool_runtime.stack == "flutter"
+
+
+def test_engine_defaults_to_html_tailwind_stack_when_unset() -> None:
+    async def send_message(
+        message_type: str,
+        value: str | None,
+        variant_index: int,
+        data: dict[str, Any] | None,
+        event_id: str | None,
+    ) -> None:
+        return None
+
+    engine = AgentEngine(
+        send_message=send_message,
+        variant_index=0,
+        openai_api_key=None,
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+        should_generate_images=False,
+    )
+
+    assert engine.stack == "html_tailwind"
+    assert engine.file_state.files == {}
+    assert engine.file_state.path == "index.html"

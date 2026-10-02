@@ -5,11 +5,12 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, cast
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from codegen.utils import extract_html_content
+from codegen.utils import extract_code_content
 from llm import Llm
 
 from agent.providers.base import ExecutedToolCall, ProviderSession, StreamEvent
 from agent.providers.factory import create_provider_session
+from agent.flutter_scaffold import load_flutter_scaffold_files
 from agent.state import AgentFileState, seed_file_state_from_messages
 from agent.tools import (
     AgentToolRuntime,
@@ -83,7 +84,23 @@ class AgentEngine:
         self.should_extract_assets = should_extract_assets
 
         self.file_state = AgentFileState()
-        if initial_file_state and initial_file_state.get("content"):
+        if stack == "flutter":
+            # Flutter has no single default file, unlike the dataclass's
+            # "index.html" default (meant for the HTML-based stacks).
+            self.file_state.path = ""
+            # Seed the fixed project scaffold (pubspec.yaml, web/*) up front
+            # so the first create_file call already lands in a real Flutter
+            # project; the agent only ever writes lib/**. See
+            # agent/flutter_scaffold for why this is static, not a dynamic
+            # `flutter create`.
+            self.file_state.files.update(load_flutter_scaffold_files())
+            if initial_file_state and initial_file_state.get("content"):
+                resumed_path = initial_file_state.get("path")
+                if resumed_path:
+                    self.file_state.path = resumed_path
+                    self.file_state.content = initial_file_state["content"]
+                    self.file_state.files[resumed_path] = initial_file_state["content"]
+        elif initial_file_state and initial_file_state.get("content"):
             self.file_state.path = initial_file_state.get("path") or "index.html"
             self.file_state.content = initial_file_state["content"]
 
@@ -190,10 +207,14 @@ class AgentEngine:
 
         tool_event_id = event.tool_call_id
         if tool_event_id not in started_tool_ids:
+            # Flutter requires an explicit path per file (no single default
+            # file to fall back to); every other stack keeps defaulting to
+            # index.html, same as before.
+            default_path = "" if self.stack == "flutter" else "index.html"
             path = (
                 extract_path_from_args(event.tool_arguments)
                 or self.file_state.path
-                or "index.html"
+                or default_path
             )
             await self._send(
                 "toolStart",
@@ -381,7 +402,7 @@ class AgentEngine:
         if self.file_state.content:
             return self.file_state.content
 
-        html = extract_html_content(assistant_text)
+        html = extract_code_content(assistant_text, self.stack)
         if html:
             self.file_state.content = html
             await self._send("setCode", html)

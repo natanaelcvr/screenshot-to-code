@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from typing import Any, List
+# pyright: reportUnknownVariableType=false
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 from openai.types.chat import ChatCompletionMessageParam
 
@@ -8,8 +9,26 @@ from codegen.utils import extract_html_content
 
 @dataclass
 class AgentFileState:
+    """The agent's view of the files it has written so far.
+
+    `path`/`content` are the original (and still the only) fields that the
+    six HTML-based stacks use: one file, always kept up to date as "the"
+    current file. They are real dataclass fields (not derived), so every
+    existing caller that reads/writes them directly keeps working exactly
+    as before — this is a pure addition, not a refactor of the old shape.
+
+    `files` is the multi-file store used only by the Flutter stack (a real
+    `pubspec.yaml` + `lib/**` project): a path -> content map covering every
+    file written so far (scaffold + agent edits). For Flutter, `path`/
+    `content` still get updated on every create_file/edit_file call, but
+    only to mirror whichever file was most recently touched — enough for
+    today's single-file code preview stream — while `files` remains the
+    source of truth for the full project tree.
+    """
+
     path: str = "index.html"
     content: str = ""
+    files: Dict[str, str] = field(default_factory=dict)
 
 
 def ensure_str(value: Any) -> str:

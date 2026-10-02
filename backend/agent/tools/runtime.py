@@ -7,6 +7,7 @@ from codegen.utils import extract_code_content
 from config import REPLICATE_API_KEY
 from agent.tools.extract_assets import run_extract_assets
 from agent.tools.local_assets import guess_image_mime, local_asset_url_to_data_url
+from agent.tools.flutter_preview import run_flutter_preview
 from agent.tools.screenshot_preview import run_screenshot_preview
 from image_generation.generation import process_tasks
 from image_generation.replicate import (
@@ -88,6 +89,11 @@ class AgentToolRuntime:
             )
         if tool_call.name == "screenshot_preview":
             return await run_screenshot_preview(
+                tool_call.arguments,
+                file_state=self.file_state,
+            )
+        if tool_call.name == "flutter_preview":
+            return await run_flutter_preview(
                 tool_call.arguments,
                 file_state=self.file_state,
             )

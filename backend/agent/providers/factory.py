@@ -13,7 +13,7 @@ from agent.tools import canonical_tool_definitions
 from config import REPLICATE_API_KEY
 from fs_logging.agent_runs import AgentRunRecorder
 from llm import ANTHROPIC_MODELS, GEMINI_MODELS, OPENAI_MODELS, Llm
-from preview_screenshot import is_screenshot_preview_available
+from preview_screenshot import is_flutter_build_available, is_screenshot_preview_available
 from prompts.prompt_types import Stack
 
 
@@ -41,6 +41,10 @@ def create_provider_session(
         # regardless of Chromium availability, and otherwise skip it only if
         # Chromium can't launch here.
         screenshot_enabled=stack != "flutter" and is_screenshot_preview_available(),
+        # flutter_preview is screenshot_preview's Flutter-only equivalent
+        # (flutter build web + Playwright); only offered for that stack, and
+        # only if the Flutter SDK is actually installed here.
+        flutter_preview_enabled=stack == "flutter" and is_flutter_build_available(),
     )
 
     if model in OPENAI_MODELS:

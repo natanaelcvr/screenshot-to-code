@@ -172,6 +172,13 @@ def _screenshot_preview_schema() -> Dict[str, Any]:
     }
 
 
+def _flutter_preview_schema() -> Dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {},
+    }
+
+
 def _retrieve_option_schema() -> Dict[str, Any]:
     return {
         "type": "object",
@@ -190,6 +197,7 @@ def canonical_tool_definitions(
     image_editing_enabled: bool = True,
     asset_extraction_enabled: bool = True,
     screenshot_enabled: bool = True,
+    flutter_preview_enabled: bool = False,
 ) -> List[CanonicalToolDefinition]:
     tools: List[CanonicalToolDefinition] = [
         CanonicalToolDefinition(
@@ -278,6 +286,20 @@ def canonical_tool_definitions(
                     "requested design. Screenshots are returned as attached images."
                 ),
                 parameters=_screenshot_preview_schema(),
+            )
+        )
+    if flutter_preview_enabled:
+        tools.append(
+            CanonicalToolDefinition(
+                name="flutter_preview",
+                description=(
+                    "Build the current Flutter project for Web and return "
+                    "full-page desktop and mobile screenshots so you can "
+                    "visually verify your work. Slower than screenshot_preview "
+                    "(it runs a real `flutter build web`), so use it sparingly "
+                    "— once per generation, not after every small edit."
+                ),
+                parameters=_flutter_preview_schema(),
             )
         )
     tools.extend(

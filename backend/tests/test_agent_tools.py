@@ -234,6 +234,76 @@ def test_provider_session_includes_screenshot_preview_when_chromium_available(
     assert "screenshot_preview" in tool_names
 
 
+def test_provider_session_enables_flutter_preview_for_flutter_stack_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "agent.providers.factory.is_flutter_build_available", lambda: True
+    )
+    session = create_provider_session(
+        model=Llm.GPT_5_5_HIGH,
+        prompt_messages=[{"role": "user", "content": "Build a page."}],
+        should_generate_images=True,
+        openai_api_key="openai-key",
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+        stack="flutter",
+    )
+
+    tools = cast(list[dict[str, Any]], getattr(session, "_tools"))
+    tool_names = [tool["name"] for tool in tools]
+    assert "flutter_preview" in tool_names
+
+
+def test_provider_session_disables_flutter_preview_when_sdk_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "agent.providers.factory.is_flutter_build_available", lambda: False
+    )
+    session = create_provider_session(
+        model=Llm.GPT_5_5_HIGH,
+        prompt_messages=[{"role": "user", "content": "Build a page."}],
+        should_generate_images=True,
+        openai_api_key="openai-key",
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+        stack="flutter",
+    )
+
+    tools = cast(list[dict[str, Any]], getattr(session, "_tools"))
+    tool_names = [tool["name"] for tool in tools]
+    assert "flutter_preview" not in tool_names
+
+
+def test_provider_session_never_enables_flutter_preview_for_other_stacks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Even if the Flutter SDK happens to be installed on this server, the
+    # tool is irrelevant (and must not be offered) outside the Flutter stack.
+    monkeypatch.setattr(
+        "agent.providers.factory.is_flutter_build_available", lambda: True
+    )
+    session = create_provider_session(
+        model=Llm.GPT_5_5_HIGH,
+        prompt_messages=[{"role": "user", "content": "Build a page."}],
+        should_generate_images=True,
+        openai_api_key="openai-key",
+        openai_base_url=None,
+        anthropic_api_key=None,
+        gemini_api_key=None,
+        replicate_api_key=None,
+    )
+
+    tools = cast(list[dict[str, Any]], getattr(session, "_tools"))
+    tool_names = [tool["name"] for tool in tools]
+    assert "flutter_preview" not in tool_names
+
+
 def test_extract_assets_tool_input_summary_uses_asset_descriptions() -> None:
     summary = summarize_tool_input(
         ToolCall(
@@ -266,6 +336,21 @@ def test_canonical_tool_definitions_exclude_screenshot_preview_when_disabled() -
         for tool in canonical_tool_definitions(True, screenshot_enabled=False)
     ]
     assert "screenshot_preview" not in tool_names
+
+
+def test_canonical_tool_definitions_exclude_flutter_preview_by_default() -> None:
+    tool_names = [tool.name for tool in canonical_tool_definitions(True)]
+    assert "flutter_preview" not in tool_names
+
+
+def test_canonical_tool_definitions_include_flutter_preview_when_enabled() -> None:
+    tools = canonical_tool_definitions(True, flutter_preview_enabled=True)
+    tool_names = [tool.name for tool in tools]
+    assert "flutter_preview" in tool_names
+    flutter_preview_tool = next(
+        tool for tool in tools if tool.name == "flutter_preview"
+    )
+    assert flutter_preview_tool.parameters["properties"] == {}
 
 
 def test_canonical_tool_definitions_include_batched_edit_images() -> None:

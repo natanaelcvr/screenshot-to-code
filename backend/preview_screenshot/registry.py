@@ -49,3 +49,17 @@ async def capture_preview_screenshot(
     pages (old and new) actually mount before we capture.
     """
     return await _backend.capture(normalize_babel_cdn(html), device, full_page)
+
+
+async def capture_preview_screenshot_url(
+    url: str,
+    device: str = "desktop",
+    full_page: bool = True,
+) -> bytes:
+    """Render the page at `url` to PNG via the active backend.
+
+    The flutter_preview tool's entry point: it serves a `flutter build web`
+    output directory over local HTTP, then calls this to screenshot it,
+    instead of `capture_preview_screenshot` (which renders inline HTML).
+    """
+    return await _backend.capture_url(url, device, full_page)

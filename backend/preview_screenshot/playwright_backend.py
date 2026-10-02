@@ -88,3 +88,36 @@ class PlaywrightBackend:
             return await page.screenshot(full_page=full_page, type="png")
         finally:
             await page.close()
+
+    async def capture_url(
+        self,
+        url: str,
+        device: str = "desktop",
+        full_page: bool = True,
+    ) -> bytes:
+        browser = await self._get_browser()
+        width, height = VIEWPORT_SIZES.get(device, VIEWPORT_SIZES["desktop"])
+        page = await browser.new_page(
+            viewport={"width": width, "height": height},
+            device_scale_factor=1,
+        )
+        try:
+            try:
+                await page.goto(
+                    url,
+                    wait_until="networkidle",
+                    timeout=PAGE_LOAD_TIMEOUT_MS,
+                )
+            except PlaywrightTimeoutError:
+                # Page is already loaded; capture whatever rendered if the
+                # network never settles (Flutter Web keeps some connections
+                # open, e.g. for hot-reload-less asset polling).
+                pass
+            try:
+                await page.evaluate("document.fonts.ready")
+            except Exception:
+                pass
+            await page.wait_for_timeout(RENDER_SETTLE_MS)
+            return await page.screenshot(full_page=full_page, type="png")
+        finally:
+            await page.close()

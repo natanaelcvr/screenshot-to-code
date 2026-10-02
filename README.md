@@ -14,6 +14,7 @@ Supported stacks:
 - Vue + Tailwind
 - Bootstrap
 - Ionic + Tailwind
+- Flutter (beta)
 
 Default AI models:
 
